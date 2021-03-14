@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -7,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth.dart';
-
+/// This class contains UI for entering and verifying some user's code
 class CodeInput extends StatefulWidget {
   @override
   _CodeInputState createState() => _CodeInputState();
@@ -16,8 +15,8 @@ class CodeInput extends StatefulWidget {
 class _CodeInputState extends State<CodeInput> {
   static const String MAIN_TAG = '## CodeInput';
   TextEditingController? _textController;
-  String code = '';
-  final int maxInputNumber = 4;
+  String _code = '';
+  final int _maxInputNumber = 4;
   bool _isLoading = false;
 
   @override
@@ -50,11 +49,26 @@ class _CodeInputState extends State<CodeInput> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      ..._buildListNumWidgets(),
+                      ..._buildListNumericalWidgets(),
                     ],
                   ),
                 ),
               ),
+              if (!_isLoading)
+                ElevatedButton(
+                  onPressed: _sendCodeToVerify,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10.0,
+                      vertical: 4.0,
+                    ),
+                    child: Text(
+                      'Confirm code',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+              SizedBox(height: 20),
               if (!_isLoading)
                 Container(
                   height: 0.0,
@@ -65,7 +79,7 @@ class _CodeInputState extends State<CodeInput> {
                     keyboardAppearance: Brightness.light,
                     autofocus: true,
                     onChanged: (enteredCode) => setState(() {
-                      code = enteredCode;
+                      _code = enteredCode;
                     }),
                   ),
                 ),
@@ -77,23 +91,18 @@ class _CodeInputState extends State<CodeInput> {
     );
   }
 
-  List<Widget> _buildListNumWidgets() {
-    int maxNumberOfWidgets = maxInputNumber;
-    int currentCodeLength = code.length;
+  List<Widget> _buildListNumericalWidgets() {
+    int maxNumberOfWidgets = _maxInputNumber;
+    int currentCodeLength = _code.length;
     List<Widget> widgets = [];
     for (int i = 0; i <= maxNumberOfWidgets - 1; i++) {
-      if (code.isNotEmpty && i <= currentCodeLength - 1) {
-        String value = code.trim().substring(i, i + 1);
+      if (_code.isNotEmpty && i <= currentCodeLength - 1) {
+        String value = _code.substring(i, i + 1);
         widgets.add(_buildNumericalWidget(i, value));
       } else {
         widgets.add(_buildNumericalWidget(i, ''));
       }
     }
-    setState(() {
-      if (currentCodeLength == maxNumberOfWidgets) {
-        _sendCodeToVerify();
-      }
-    });
     return widgets;
   }
 
@@ -112,29 +121,32 @@ class _CodeInputState extends State<CodeInput> {
   }
 
   Future<void> _sendCodeToVerify() async {
-    _isLoading = true;
-    log('$MAIN_TAG._sendCodeToVerify _isLoading: $_isLoading; code: $code');
-
+    setState(() {
+      _isLoading = true;
+    });
     try {
-      await context.read<Auth>().sendCodeToVerify(code);
+      await context.read<Auth>().sendCodeToVerify(_code);
       _showCodeConfirmedMessage();
     } catch (error) {
-      _showErrorDialog(error.toString());
+      await _showErrorDialog(error.toString());
     }
+    resetCodeProcessing();
+  }
+
+  void resetCodeProcessing() {
     setState(() {
-      code = '';
+      _code = '';
       _textController?.clear();
       _isLoading = false;
     });
-    log('$MAIN_TAG._sendCodeToVerify _isLoading: $_isLoading; code: $code');
   }
 
-  void _showErrorDialog(String message) {
-    showDialog(
+  Future<void> _showErrorDialog(String message) async {
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          'An Error Occured!',
+          'Entered code is incorrect!',
           style: TextStyle(color: Theme.of(context).errorColor),
         ),
         content: Text(message),
@@ -152,17 +164,18 @@ class _CodeInputState extends State<CodeInput> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         action: SnackBarAction(
+          textColor: Colors.red,
           label: 'Ok',
           onPressed: () {},
         ),
-        duration: Duration(seconds: 5),
+        duration: Duration(seconds: 3),
         padding: EdgeInsets.all(8.0),
         backgroundColor: Theme.of(context).primaryColor,
         content: Text(
           'The code confirmed',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 18.0,
+            fontSize: 20.0,
           ),
         ),
       ),

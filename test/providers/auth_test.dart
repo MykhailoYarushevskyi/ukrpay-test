@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 import 'package:ukrpay_input_test/providers/auth.dart';
 
 void main() {
-  group('App Provider Tests', () {
+  group('Auth.sendCodeToVerify() tests', () {
     var auth = Auth();
 
     test('The verified code is correct', () async {
@@ -12,7 +12,7 @@ void main() {
         result = await auth.sendCodeToVerify('1111');
         expect(result, true);
       } on Exception catch (e) {
-        fail('exception thrown');
+        fail('$e exception thrown');
       }
     });
     test('The verified code is empty', () async {
@@ -52,7 +52,6 @@ void main() {
       }
     });
     test('The verified code is shorter', () async {
-      // bool result = false;
       try {
         await auth.sendCodeToVerify('111');
       } on Exception catch (e) {
