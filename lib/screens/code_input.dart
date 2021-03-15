@@ -1,22 +1,27 @@
+import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:provider/provider.dart';
 
 import '../providers/auth.dart';
-/// This class contains UI for entering and verifying some user's code
+
+/// This class contains UI for entering and verifying user's access code
 class CodeInput extends StatefulWidget {
   @override
   _CodeInputState createState() => _CodeInputState();
 }
 
 class _CodeInputState extends State<CodeInput> {
-  static const String MAIN_TAG = '## CodeInput';
-  TextEditingController? _textController;
+  // static const String MAIN_TAG = '## CodeInput'; // for log() prints
+  late final TextEditingController? _textController;
   String _code = '';
+  final String _appBarTitle = 'Enter the code access';
   final int _maxInputNumber = 4;
+  final bool _isIOS = Platform.isIOS;
   bool _isLoading = false;
 
   @override
@@ -33,12 +38,20 @@ class _CodeInputState extends State<CodeInput> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Code Input'),
-        centerTitle: true,
-      ),
-      body: Stack(
+    return _isIOS
+        ? CupertinoPageScaffold(
+            navigationBar: _buildCupertinoCupertinoNavigationBar(),
+            child: pageBody(),
+          )
+        : Scaffold(
+            appBar: _buildAndroidAppBar(),
+            body: pageBody(),
+          );
+  }
+
+  Widget pageBody() {
+    return SafeArea(
+      child: Stack(
         children: [
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -54,41 +67,86 @@ class _CodeInputState extends State<CodeInput> {
                   ),
                 ),
               ),
-              if (!_isLoading)
-                ElevatedButton(
-                  onPressed: _sendCodeToVerify,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10.0,
-                      vertical: 4.0,
-                    ),
-                    child: Text(
-                      'Confirm code',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
+              if (!_isLoading) _buildButton('Confirm code'),
               SizedBox(height: 20),
               if (!_isLoading)
                 Container(
                   height: 0.0,
                   width: 0.0,
-                  child: TextField(
-                    controller: _textController,
-                    keyboardType: TextInputType.number,
-                    keyboardAppearance: Brightness.light,
-                    autofocus: true,
-                    onChanged: (enteredCode) => setState(() {
-                      _code = enteredCode;
-                    }),
-                  ),
+                  child: _buildTextField(),
                 ),
             ],
           ),
-          if (_isLoading) Center(child: CircularProgressIndicator()),
+          if (_isLoading)
+            Center(
+                child: _isIOS
+                    ? CupertinoActivityIndicator(
+                        radius: 40.0,
+                      )
+                    : CircularProgressIndicator(
+                        semanticsLabel: 'Circular Progress Indicator',
+                      )),
         ],
       ),
     );
+  }
+
+  ObstructingPreferredSizeWidget _buildCupertinoCupertinoNavigationBar() {
+    return CupertinoNavigationBar(
+      middle: Text(_appBarTitle),
+    );
+  }
+
+  PreferredSizeWidget _buildAndroidAppBar() {
+    return AppBar(
+      title: Text(_appBarTitle),
+      centerTitle: true,
+    );
+  }
+
+  Widget _buildButton(String text) {
+    return _isIOS
+        ? CupertinoButton.filled(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 16),
+            ),
+            onPressed: _sendCodeToVerify,
+          )
+        : ElevatedButton(
+            onPressed: _sendCodeToVerify,
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 25.0, vertical: 8.0),
+              child: Text(
+                text,
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          );
+  }
+
+  Widget _buildTextField() {
+    return _isIOS
+        ? CupertinoTextField(
+            controller: _textController,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.unspecified,
+            autofocus: true,
+            onChanged: (enteredCode) => setState(() {
+              _code = enteredCode;
+            }),
+          )
+        : TextField(
+            textInputAction: TextInputAction.unspecified,
+            controller: _textController,
+            keyboardType: TextInputType.number,
+            keyboardAppearance: Brightness.light,
+            autofocus: true,
+            onChanged: (enteredCode) => setState(() {
+              _code = enteredCode;
+            }),
+          );
   }
 
   List<Widget> _buildListNumericalWidgets() {
@@ -142,42 +200,79 @@ class _CodeInputState extends State<CodeInput> {
   }
 
   Future<void> _showErrorDialog(String message) async {
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Entered code is incorrect!',
-          style: TextStyle(color: Theme.of(context).errorColor),
+    if (_isIOS) {
+      _showCupertinoDialog(
+        'The Entered code is incorrect!',
+        titleColor: Theme.of(context).errorColor,
+        content: message,
+      );
+    } else {
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            'The Entered code is incorrect!',
+            style: TextStyle(color: Theme.of(context).errorColor),
+          ),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Ok'),
+              onPressed: () => Navigator.of(context).pop(),
+            )
+          ],
         ),
-        content: Text(message),
-        actions: <Widget>[
-          TextButton(
-            child: Text('Ok'),
-            onPressed: () => Navigator.of(context).pop(),
-          )
-        ],
-      ),
-    );
+      );
+    }
   }
 
   void _showCodeConfirmedMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        action: SnackBarAction(
-          textColor: Colors.red,
-          label: 'Ok',
-          onPressed: () {},
-        ),
-        duration: Duration(seconds: 3),
-        padding: EdgeInsets.all(8.0),
-        backgroundColor: Theme.of(context).primaryColor,
-        content: Text(
-          'The code confirmed',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 20.0,
+    if (_isIOS) {
+      _showCupertinoDialog('The code access confirmed');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          action: SnackBarAction(
+            textColor: Colors.red,
+            label: 'Ok',
+            onPressed: () {},
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+          padding: EdgeInsets.all(8.0),
+          backgroundColor: Theme.of(context).primaryColor,
+          content: const Text(
+            'The code access confirmed',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20.0,
+            ),
           ),
         ),
+      );
+    }
+  }
+
+  Future<void> _showCupertinoDialog(
+    String title, {
+    String content = '',
+    String actionText = 'Ok',
+    Color titleColor = Colors.black,
+  }) async {
+    await showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(
+          title,
+          style: TextStyle(color: titleColor),
+        ),
+        content: Text(content),
+        actions: [
+          CupertinoDialogAction(
+            child: Text(actionText),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
       ),
     );
   }

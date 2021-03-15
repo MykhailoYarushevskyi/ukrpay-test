@@ -40,18 +40,39 @@ void main() {
       }
     });
     test('The verified code is incorrect', () async {
+      try {
+        await auth.sendCodeToVerify('- .,');
+      } on Exception catch (e) {
+        expect(e, isA<Exception>());
+      }
+    });
+    test('The verified code is incorrect', () async {
+      try {
+        await auth.sendCodeToVerify('1111.');
+      } on Exception catch (e) {
+        expect(e, isA<Exception>());
+      }
+    });
+    test('The verified code is incorrect', () async {
+      try {
+        await auth.sendCodeToVerify('.1111');
+      } on Exception catch (e) {
+        expect(e, isA<Exception>());
+      }
+    });
+    test('The verified code is incorrect', () async {
       expect(() async {
         return await auth.sendCodeToVerify('1112');
       }, throwsException);
     });
-    test('The verified code is longer', () async {
+    test('The verified code is incorrect (longer)', () async {
       try {
         await auth.sendCodeToVerify('11111');
       } on Exception catch (e) {
         expect(e, isA<Exception>());
       }
     });
-    test('The verified code is shorter', () async {
+    test('The verified code is incorrect (shorter)', () async {
       try {
         await auth.sendCodeToVerify('111');
       } on Exception catch (e) {
