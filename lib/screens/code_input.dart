@@ -41,15 +41,15 @@ class _CodeInputState extends State<CodeInput> {
     return _isIOS
         ? CupertinoPageScaffold(
             navigationBar: _buildCupertinoCupertinoNavigationBar(),
-            child: pageBody(),
+            child: _pageBody(),
           )
         : Scaffold(
             appBar: _buildAndroidAppBar(),
-            body: pageBody(),
+            body: _pageBody(),
           );
   }
 
-  Widget pageBody() {
+  Widget _pageBody() {
     return SafeArea(
       child: Stack(
         children: [
